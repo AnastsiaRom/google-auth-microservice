@@ -1,0 +1,81 @@
+services:
+  # PostgreSQL
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: laravel
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - ./data/db:/var/lib/postgresql/data:rw
+    hostname: db
+    ports:
+      - "5432:5432"
+
+  # PGAdmin
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+    ports:
+      - "5050:80"
+
+  # Nginx
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./laravel:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+
+  # Laravel App
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./laravel:/var/www/html
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: laravel
+      DB_USERNAME: laravel
+      DB_PASSWORD: secret
+    depends_on:
+      - db
+
+  # Composer
+  composer:
+    image: composer:latest
+    volumes:
+      - ./laravel:/var/www/html
+    working_dir: /var/www/html
+    command: composer install
+
+  # Artisan
+  artisan:
+    image: php:8.2-cli
+    volumes:
+      - ./laravel:/var/www/html
+    working_dir: /var/www/html
+    command: php artisan migrate --seed
+    depends_on:
+      - db
+
+  # PHPUnit
+  phpunit:
+    image: php:8.2-cli
+    volumes:
+      - ./laravel:/var/www/html
+    working_dir: /var/www/html
+    command: php artisan test
+    depends_on:
+      - db
+
+volumes:
+  db_data:
